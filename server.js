@@ -52,8 +52,13 @@ app.post("/create", upload.array("bilder"), (req, res) => {
 
     execSync(`libreoffice --headless --convert-to pdf "${outputDocx}" --outdir "${__dirname}"`);
 
-    res.download(outputPdf, `Schadenerfassung_${req.body.vertrag}.pdf`);
+const outputPdf = path.join(__dirname, "output.pdf");
 
+if (!fs.existsSync(outputPdf)) {
+    return res.status(500).send("PDF konnte nicht erstellt werden");
+}
+
+res.download(outputPdf, `Schadenerfassung_${req.body.vertrag}.pdf`);
 });
 
 const PORT = process.env.PORT || 3000;
