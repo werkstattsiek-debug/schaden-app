@@ -30,7 +30,7 @@ end: "}"
 }
 });
 
-doc.setData({
+doc.render({
 vertrag: req.body.vertrag,
 datum: req.body.retour,
 artikel: req.body.artikel,
@@ -38,8 +38,6 @@ vermieter: req.body.vermieter,
 mitarbeiter: req.body.mitarbeiter,
 schaden: req.body.schaden
 });
-
-doc.render();
 
 const buf = doc.getZip().generate({
 type: "nodebuffer"
