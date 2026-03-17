@@ -38,8 +38,15 @@ cursor:pointer;
 font-size:16px;
 }
 
-button:hover{
-background:#005fa3;
+button:disabled{
+background:gray;
+cursor:not-allowed;
+}
+
+#loader{
+display:none;
+margin-top:10px;
+font-weight:bold;
 }
 
 </style>
@@ -72,16 +79,23 @@ background:#005fa3;
 <label>Kosten des Schadens</label>
 <input id="kosten">
 
-<label>Bilder</label>
-<input type="file" id="bilder" multiple>
+<button id="pdfbutton" onclick="create()">PDF erstellen</button>
 
-<button onclick="create()">PDF erstellen</button>
+<div id="loader">
+PDF wird erstellt... bitte warten
+</div>
 
 </div>
 
 <script>
 
 async function create(){
+
+const button = document.getElementById("pdfbutton")
+const loader = document.getElementById("loader")
+
+button.disabled = true
+loader.style.display = "block"
 
 const form = new FormData()
 
@@ -93,11 +107,7 @@ form.append("mitarbeiter",document.getElementById("mitarbeiter").value)
 form.append("schaden",document.getElementById("schaden").value)
 form.append("kosten",document.getElementById("kosten").value)
 
-const files = document.getElementById("bilder").files
-
-for(const f of files){
-form.append("bilder",f)
-}
+try{
 
 const res = await fetch("/create",{
 method:"POST",
@@ -105,8 +115,7 @@ body:form
 })
 
 if(!res.ok){
-alert("Fehler beim PDF erstellen")
-return
+throw new Error("Server Fehler")
 }
 
 const blob = await res.blob()
@@ -121,6 +130,15 @@ document.body.appendChild(a)
 a.click()
 
 window.URL.revokeObjectURL(url)
+
+}catch(err){
+
+alert("Fehler beim PDF erstellen")
+
+}
+
+button.disabled = false
+loader.style.display = "none"
 
 }
 
