@@ -30,7 +30,7 @@ end: "}"
 }
 });
 
-doc.render({
+doc.setData({
 vertrag: req.body.vertrag,
 datum: req.body.retour,
 artikel: req.body.artikel,
