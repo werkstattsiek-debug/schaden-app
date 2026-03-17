@@ -1,49 +1,68 @@
 const express = require("express");
 const multer = require("multer");
-const PDFDocument = require("pdfkit");
+const fs = require("fs");
+const path = require("path");
+const PizZip = require("pizzip");
+const Docxtemplater = require("docxtemplater");
+const libre = require("libreoffice-convert");
 
 const app = express();
-
 const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(express.static("public"));
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
-app.post("/create", upload.array("bilder"), (req, res) => {
+app.post("/create", upload.none(), async (req, res) => {
 
 try {
 
-const doc = new PDFDocument();
+const templatePath = path.join(__dirname, "template", "schadenerfassung.docx");
+
+const content = fs.readFileSync(templatePath, "binary");
+
+const zip = new PizZip(content);
+
+const doc = new Docxtemplater(zip, {
+delimiters: {
+start: "{",
+end: "}"
+}
+});
+
+doc.setData({
+vertrag: req.body.vertrag,
+datum: req.body.retour,
+artikel: req.body.artikel,
+vermieter: req.body.vermieter,
+mitarbeiter: req.body.mitarbeiter,
+schaden: req.body.schaden
+});
+
+doc.render();
+
+const buf = doc.getZip().generate({
+type: "nodebuffer"
+});
+
+libre.convert(buf, ".pdf", undefined, (err, done) => {
+
+if (err) {
+console.log(err);
+return res.status(500).send("PDF Fehler");
+}
 
 res.setHeader("Content-Type", "application/pdf");
 res.setHeader("Content-Disposition", "attachment; filename=Schadenerfassung.pdf");
 
-doc.pipe(res);
+res.end(done);
 
-doc.fontSize(22).text("Schadenerfassung", { align: "center" });
-doc.moveDown();
+});
 
-doc.fontSize(12);
-doc.text("Vertragsnummer: " + (req.body.vertrag || ""));
-doc.text("Retourdatum: " + (req.body.retour || ""));
-doc.text("Artikel: " + (req.body.artikel || ""));
-doc.text("Vermieter: " + (req.body.vermieter || ""));
-doc.text("Dokumentiert von: " + (req.body.mitarbeiter || ""));
+} catch (error) {
 
-doc.moveDown();
-doc.text("Art des Schadens:");
-doc.text(req.body.schaden || "");
-
-doc.moveDown();
-doc.text("Kosten des Schadens: " + (req.body.kosten || ""));
-
-doc.end();
-
-} catch(err) {
-
-console.log(err);
-res.status(500).send("PDF Fehler");
+console.log(error);
+res.status(500).send("Template Fehler");
 
 }
 
