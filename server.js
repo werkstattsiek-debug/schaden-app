@@ -1,61 +1,44 @@
-
 const express = require("express");
 const multer = require("multer");
-const fs = require("fs");
-const path = require("path");
-const { execSync } = require("child_process");
-
-const PizZip = require("pizzip");
-const Docxtemplater = require("docxtemplater");
+const PDFDocument = require("pdfkit");
 
 const app = express();
-const upload = multer({ dest: "uploads/" });
+const upload = multer();
 
 app.use(express.static("public"));
 
-app.post("/create", upload.array("bilder"), (req, res) => {
+app.post("/create", upload.array("bilder"), (req,res)=>{
 
-const template = path.join(__dirname,"template","schadenerfassung.docx")
-const content = fs.readFileSync(template,"binary")
+const doc = new PDFDocument();
 
-const zip = new PizZip(content)
-const doc = new Docxtemplater(zip)
+res.setHeader("Content-Type","application/pdf");
+res.setHeader("Content-Disposition","attachment; filename=Schadenerfassung.pdf");
 
-doc.setData({
-vertrag:req.body.vertrag,
-datum:req.body.retour,
-artikel:req.body.artikel,
-vermieter:req.body.vermieter,
-schaden:req.body.schaden,
-kosten:req.body.kosten,
-mitarbeiter:req.body.mitarbeiter
-})
+doc.pipe(res);
 
-try{
-doc.render()
-}catch(e){
-console.log(e)
-return res.status(500).send("Template Fehler")
-}
+doc.fontSize(22).text("Schadenerfassung",{align:"center"});
+doc.moveDown();
 
-const docxPath = path.join(__dirname,"temp.docx")
-const pdfPath = path.join(__dirname,"temp.pdf")
+doc.fontSize(12);
+doc.text("Vertragsnummer: " + req.body.vertrag);
+doc.text("Retourdatum: " + req.body.retour);
+doc.text("Artikel: " + req.body.artikel);
+doc.text("Vermieter: " + req.body.vermieter);
+doc.text("Dokumentiert von: " + req.body.mitarbeiter);
 
-const buffer = doc.getZip().generate({type:"nodebuffer"})
-fs.writeFileSync(docxPath,buffer)
+doc.moveDown();
+doc.text("Art des Schadens:");
+doc.text(req.body.schaden);
 
-execSync(`libreoffice --headless --convert-to pdf "${docxPath}" --outdir "${__dirname}"`)
+doc.moveDown();
+doc.text("Kosten des Schadens: " + req.body.kosten);
 
-if(!fs.existsSync(pdfPath)){
-return res.status(500).send("PDF konnte nicht erstellt werden")
-}
+doc.end();
 
-res.download(pdfPath,"Schadenerfassung_"+req.body.vertrag+".pdf")
+});
 
-})
-
-const PORT = process.env.PORT || 3000
+const PORT = process.env.PORT || 10000;
 
 app.listen(PORT,()=>{
-console.log("Server läuft auf Port "+PORT)
-})
+console.log("Server läuft auf Port " + PORT);
+});
